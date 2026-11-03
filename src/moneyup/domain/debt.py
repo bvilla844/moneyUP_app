@@ -4,18 +4,7 @@ from datetime import date
 from decimal import ROUND_CEILING, Decimal
 
 from moneyup.domain.category import Category, CategoryKind
-
-CENT = Decimal("0.01")
-
-
-def _check_money(value: object, field: str) -> None:
-    """Shared money validation: Decimal, positive, max 2 decimals."""
-    if not isinstance(value, Decimal):
-        raise TypeError(f"{field} must be a Decimal, got {type(value).__name__}")
-    if value <= 0:
-        raise ValueError(f"{field} must be greater than zero")
-    if value != value.quantize(CENT):
-        raise ValueError(f"{field} cannot have more than 2 decimals")
+from moneyup.domain.money import check_money, check_positive_int
 
 
 @dataclass(frozen=True)
@@ -40,19 +29,9 @@ class Debt:
             raise ValueError("Debt name cannot be empty")
         object.__setattr__(self, "name", cleaned)
 
-        _check_money(self.original_amount, "original_amount")
-        _check_money(self.installment_payment, "installment_payment")
-
-        # bool is a subclass of int in Python (True == 1), so exclude it.
-        if not isinstance(self.installment_count, int) or isinstance(
-            self.installment_count, bool
-        ):
-            raise TypeError(
-                "installment_count must be an int, "
-                f"got {type(self.installment_count).__name__}"
-            )
-        if self.installment_count <= 0:
-            raise ValueError("installment_count must be greater than zero")
+        check_money(self.original_amount, "original_amount")
+        check_money(self.installment_payment, "installment_payment")
+        check_positive_int(self.installment_count, "installment_count")
 
         if self.total_to_pay < self.original_amount:
             raise ValueError(
@@ -87,7 +66,7 @@ class DebtPayment:
     note: str = ""
 
     def __post_init__(self) -> None:
-        _check_money(self.amount, "amount")
+        check_money(self.amount, "amount")
         if self.paid_on < self.debt.start_date:
             raise ValueError("A payment cannot be before the debt start_date")
 
